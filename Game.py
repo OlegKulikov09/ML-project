@@ -26,47 +26,39 @@ class Game:
         round_number = 1
 
         while self.running:
-            # Обработка событий (нужно для корректной работы Pygame)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.running = False
 
-            # Если все раунды пройдены, заканчиваем игру
             if round_number > self.turns:
                 self.running = False
                 continue
 
             print(f"Round {round_number}:")
 
-            # Ход Chaser
             self.chaser.position = self.chaser.random_move(self.chaser.position)
             chaser_reward = Reward.reward_chaser_calculation(self.victim.position, self.chaser.position)
             self.chaser_rewards.append(chaser_reward)
 
-            # Проверка на поимку
             if self.chaser.position == self.victim.position:
                 print(f"Chaser caught the victim!")
                 chaser_reward = Reward.reward_chaser_calculation(self.victim.position, self.chaser.position)
                 victim_reward = Reward.reward_victim_calculation(self.victim.position, self.chaser.position)
 
-                self.chaser_rewards[-1] = chaser_reward  # Обновляем награду охотника
-                self.victim_rewards.append(victim_reward)  # Наказание жертве
+                self.chaser_rewards[-1] = chaser_reward
+                self.victim_rewards.append(victim_reward)
                 self.draw_game_state()
                 break
 
-            # Ход Victim
             self.victim.position = self.victim.random_move(self.victim.position)
             victim_reward = Reward.reward_victim_calculation(self.victim.position, self.chaser.position)
             self.victim_rewards.append(victim_reward)
 
-            # Отрисовка
             self.draw_game_state()
 
-            # Увеличиваем номер раунда
             round_number += 1
 
-            # Пауза для наглядности
-            self.clock.tick(4)  # Медленный FPS для наблюдения
+            self.clock.tick(4)
 
         self.show_statistics()
 
@@ -74,17 +66,15 @@ class Game:
         sys.exit()
 
     def draw_game_state(self):
-        """Отрисовывает текущее состояние игры."""
-        self.screen.fill(Grid.BLACK)  # Очистка экрана
+        self.screen.fill(Grid.BLACK)
         Grid.draw_grid(self.screen)
         Chaser.draw_visibility(self.screen, self.chaser.position, Grid.LIGHT_BLUE)
         Victim.draw_visibility(self.screen, self.victim.position, Grid.LIGHT_RED)
         Chaser.draw_player(self.screen, *self.chaser.position, Grid.BLUE)
         Victim.draw_player(self.screen, *self.victim.position, Grid.RED)
-        pygame.display.flip()  # Обновление экрана
+        pygame.display.flip()
 
     def show_statistics(self):
-        """Выводит статистику наград после завершения игры."""
         total_chaser_reward = sum(self.chaser_rewards)
         total_victim_reward = sum(self.victim_rewards)
 
