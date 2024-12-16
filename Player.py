@@ -1,3 +1,5 @@
+import random
+
 import pygame
 
 from Grid import Grid
@@ -31,6 +33,11 @@ class Player:
         if direction == "LEFT" and x > 1: x -= 1
         if direction == "RIGHT" and x < Grid.GRID_SIZE - 2: x += 1
         return [x, y]
+
+    def random_move(self, position):
+        directions = ["UP", "DOWN", "LEFT", "RIGHT"]
+        direction = random.choice(directions)
+        return self.move_player(position, direction)
 
     @staticmethod
     def draw_player(screen, x, y, color):
