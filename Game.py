@@ -14,9 +14,9 @@ class Game:
         pygame.display.set_caption("NN Tags")
         self.clock = pygame.time.Clock()
 
-        self.chaser = Chaser(1, 1)
-        self.victim = Victim(Grid.GRID_SIZE - 2, Grid.GRID_SIZE - 2)
-        self.turns = 6
+        self.chaser = Chaser(2, 2)
+        self.victim = Victim(Grid.GRID_SIZE - 3, Grid.GRID_SIZE - 3)
+        self.turns = 20
         self.running = True
 
         self.chaser_rewards = []
@@ -37,8 +37,16 @@ class Game:
             print(f"Round {round_number}:")
 
             self.chaser.position = self.chaser.random_move(self.chaser.position)
+            self.chaser.agent_vision()
+            self.victim.agent_vision()
             chaser_reward = Reward.reward_chaser_calculation(self.victim.position, self.chaser.position)
             self.chaser_rewards.append(chaser_reward)
+
+            if tuple(self.victim.position) in self.chaser.vision_data:
+                print(f"Chaser realised where the victim is!")
+
+            if tuple(self.chaser.position) in self.victim.vision_data:
+                print(f"Victim understood where the chaser is!")
 
             if self.chaser.position == self.victim.position:
                 print(f"Chaser caught the victim!")
@@ -56,9 +64,12 @@ class Game:
 
             self.draw_game_state()
 
+            self.chaser.agent_vision_reset()
+            self.victim.agent_vision_reset()
+
             round_number += 1
 
-            self.clock.tick(4)
+            self.clock.tick(2)
 
         self.show_statistics()
 

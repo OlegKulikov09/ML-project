@@ -2,7 +2,7 @@
 import pygame
 
 class Grid:
-    CELL_SIZE = 30
+    CELL_SIZE = 50
     GRID_SIZE = 10
     SCREEN_SIZE = CELL_SIZE * GRID_SIZE
     WHITE = (255, 255, 255)
@@ -18,6 +18,13 @@ class Grid:
         for x in range(Grid.GRID_SIZE):
             for y in range(Grid.GRID_SIZE):
                 rect = pygame.Rect(x * Grid.CELL_SIZE, y * Grid.CELL_SIZE, Grid.CELL_SIZE, Grid.CELL_SIZE)
-                color = Grid.GRAY if x == 0 or y == 0 or x == Grid.GRID_SIZE - 1 or y == Grid.GRID_SIZE - 1 else Grid.WHITE
+                color = Grid.GRAY if (
+                        x <= 1 or
+                        y <= 1 or
+                        x == Grid.GRID_SIZE - 1 or
+                        y == Grid.GRID_SIZE - 1 or
+                        x == Grid.GRID_SIZE - 2 or
+                        y == Grid.GRID_SIZE - 2) \
+                    else Grid.WHITE
                 pygame.draw.rect(screen, color, rect)
                 pygame.draw.rect(screen, Grid.BLACK, rect, 1)
