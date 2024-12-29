@@ -26,13 +26,12 @@ class Player:
                             Grid.CELL_SIZE)
                     pygame.draw.rect(screen, color, rect)
 
-    @staticmethod
-    def move_player(position, direction):
+    def move_player(self, position, direction):
         x, y = position
-        if direction == "UP" and y > 2: y -= 1
-        if direction == "DOWN" and y < Grid.GRID_SIZE - 3: y += 1
-        if direction == "LEFT" and x > 2: x -= 1
-        if direction == "RIGHT" and x < Grid.GRID_SIZE - 3: x += 1
+        if direction == 0 and y > 2: y -= 1
+        if direction == 2 and y < Grid.GRID_SIZE - 3: y += 1
+        if direction == 3 and x > 2: x -= 1
+        if direction == 1 and x < Grid.GRID_SIZE - 3: x += 1
         return [x, y]
 
 
@@ -49,7 +48,7 @@ class Player:
         self.vision_data = []
 
     def random_move(self, position):
-        directions = ["UP", "DOWN", "LEFT", "RIGHT"]
+        directions = [0, 2, 3, 1]
         direction = random.choice(directions)
         return self.move_player(position, direction)
 
