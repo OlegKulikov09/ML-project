@@ -2,11 +2,12 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+
 class QN(nn.Module):
     def __init__(self, input, output):
         super(QN, self).__init__()
         self.fc1 = nn.Linear(input, 64)  # Первый линейный слой
-        self.fc2 = nn.Linear(64, 64) # Второй линейный слой
+        self.fc2 = nn.Linear(64, 64)  # Второй линейный слой
         self.fc3 = nn.Linear(64, output)  # Выходной слой
 
     def forward(self, x):
