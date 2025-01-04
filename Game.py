@@ -33,7 +33,7 @@ class Game:
         self.victim.draw_player(self.screen, *self.victim.position, Grid.RED)
 
         pygame.display.flip()
-        self.clock.tick(5)  # FPS
+        self.clock.tick(2)  # FPS
 
         # Check game status
         for event in pygame.event.get():
