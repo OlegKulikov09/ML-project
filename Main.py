@@ -51,7 +51,6 @@ class Main:
         torch.save(self.policy_net.state_dict(), filename)
         print(f"Model saved to {filename}")
 
-    # Загрузка модели
     def load_model(self, filename="dqn_model.pth"):
         self.policy_net.load_state_dict(torch.load(filename))
         self.policy_net.eval()  # Setting test mode
@@ -104,11 +103,17 @@ class Main:
                         action = torch.argmax(self.policy_net(state_tensor)).item()
 
                 self.env.victim.position = self.env.victim.random_move(self.env.victim.position)
+                reward = Reward.reward_chaser_calculation(self.env.victim.position, self.env.chaser.position)
+                total_reward += reward
+
+                if self.env.chaser.position == self.env.victim.position or t == self.env.turns:
+                    done = True
+                    break
 
                 next_position = self.env.chaser.move_player(self.env.chaser.position, action)
                 self.env.chaser.position = next_position
 
-                reward = Reward.reward_chaser_calculation(self.env.victim.position, next_position)
+                reward = Reward.reward_chaser_calculation(self.env.victim.position, self.env.chaser.position)
                 total_reward += reward
 
                 next_state = self.get_state(next_position, self.env.victim.position)
@@ -152,34 +157,37 @@ class Main:
         total_reward = 0
 
         for episode in range(episodes):
-            env = Game(40)
             self.env.reset()
             state = self.get_state(self.env.chaser.position, self.env.victim.position)
             done = False
-            finalDone = False
             t = 0
 
-            while not finalDone:
+            while not done:
                 with torch.no_grad():
                     state_tensor = torch.tensor([state], dtype=torch.float32)
                     action = torch.argmax(self.policy_net(state_tensor)).item()
 
+                #Victim moving logic
                 self.env.victim.position = self.env.victim.random_move(self.env.victim.position)
-                next_position = self.env.chaser.move_player(self.env.chaser.position, action)
-                self.env.chaser.position = next_position
-
+                #Visualisation
+                self.env.visualize(self.env.chaser.position, self.env.victim.position)
                 reward = Reward.reward_chaser_calculation(self.env.victim.position, self.env.chaser.position)
                 total_reward += reward
 
+                if self.env.chaser.position == self.env.victim.position or t == self.env.turns:
+                    done = True
+                    break
+
+                #Chaser moving logic
+                next_position = self.env.chaser.move_player(self.env.chaser.position, action)
+                self.env.chaser.position = next_position
+                reward = Reward.reward_chaser_calculation(self.env.victim.position, self.env.chaser.position)
+                total_reward += reward
                 state = self.get_state(self.env.chaser.position, self.env.victim.position)
-
-                #Visualisation1
-
-                done = self.env.chaser.position == self.env.victim.position or t == self.env.turns
-                self.env.victim.position = self.env.victim.random_move(self.env.victim.position)
                 #Visualisation2
                 self.env.visualize(self.env.chaser.position, self.env.victim.position)
-                finalDone = True
+
+                done = self.env.chaser.position == self.env.victim.position or t == self.env.turns
                 t += 1
 
             if self.env.chaser.position == self.env.victim.position:
@@ -195,7 +203,6 @@ class Main:
 
 if __name__ == "__main__":
     trainer = Main()
-    #trainer.train(episodes=5500)  # Run train
-    #trainer.test(episodes=10)  # Run test
-    trainer.load_model("trained_model.pth")
-    trainer.test(episodes=100)
+    #trainer.train(episodes=4000)  # Run train
+    #trainer.load_model("trained_model.pth") # Test of trained model
+    #trainer.test(episodes=100)
