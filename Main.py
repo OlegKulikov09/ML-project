@@ -190,6 +190,8 @@ class Main:
                 done = self.env.chaser.position == self.env.victim.position or t == self.env.turns
                 t += 1
 
+            self.env.save_gif(f"simulation_episode_{episode}.gif")
+
             if self.env.chaser.position == self.env.victim.position:
                 successes += 1
 
@@ -204,5 +206,5 @@ class Main:
 if __name__ == "__main__":
     trainer = Main()
     #trainer.train(episodes=4000)  # Run train
-    #trainer.load_model("trained_model.pth") # Test of trained model
-    #trainer.test(episodes=100)
+    trainer.load_model("trained_model.pth") # Test of trained model
+    trainer.test(episodes=1)
