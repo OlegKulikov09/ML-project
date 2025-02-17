@@ -26,6 +26,8 @@ class Main:
         self.update_target_every = 10
         self.replay_buffer = PrioritizedReplayBuffer(capacity=10000, alpha=0.6)
 
+        self.hunter_net = None
+
         # DQN initialization
         input_size = len(self.get_state([0, 0], [0, 0]))
         output_size = len(self.output)
@@ -48,13 +50,31 @@ class Main:
         self.replay_buffer.add((state, action, reward, next_state, done), error)
 
     def save_model(self, filename="dqn_model.pth"):
-        torch.save(self.policy_net.state_dict(), filename)
-        print(f"Model saved to {filename}")
+        checkpoint = {
+            'policy_net': self.policy_net.state_dict(),
+            'epsilon': self.epsilon,
+            'epsilon_min': self.epsilon_min,
+            'epsilon_decay': self.epsilon_decay,
+            'gamma': self.gamma,
+            'optimizer': self.optimizer.state_dict(),
+        }
+        torch.save(checkpoint, filename)
+        print(f"Model and training parameters saved to {filename}")
 
     def load_model(self, filename="dqn_model.pth"):
-        self.policy_net.load_state_dict(torch.load(filename))
-        self.policy_net.eval()  # Setting test mode
-        print(f"Model loaded from {filename}")
+        checkpoint = torch.load(filename, map_location=torch.device('cpu'))
+
+        self.policy_net.load_state_dict(checkpoint['policy_net'])
+
+        self.epsilon = checkpoint['epsilon']
+        self.epsilon_min = checkpoint['epsilon_min']
+        self.epsilon_decay = checkpoint['epsilon_decay']
+        self.gamma = checkpoint['gamma']
+
+        self.optimizer.load_state_dict(checkpoint['optimizer'])
+
+        self.policy_net.eval()  # Это будет работать на атрибуте self.policy_net
+        print(f"Model and training parameters loaded from {filename}")
 
     def train_dqn(self):
         if len(self.replay_buffer.buffer) < self.batch_size:
@@ -142,6 +162,68 @@ class Main:
         trainer.save_model("trained_model.pth")
         self.plot_rewards(rewards_per_episode)
 
+    def train_victim(self, episodes, hunter_model_path):
+        self.hunter_net = Main()
+        self.hunter_net.load_model(hunter_model_path)
+
+        rewards_per_episode = []
+
+        for episode in range(episodes):
+            self.env.reset()
+            done = False
+            state = self.get_state(self.env.chaser.position, self.env.victim.position)
+            total_reward = 0
+            t = 0
+
+            while not done:
+                if random.uniform(0, 1) < self.epsilon:
+                    victim_action = random.choice(self.output)  # exploration
+                else:
+                    with torch.no_grad():
+                        state_tensor = torch.tensor([state], dtype=torch.float32)
+                        victim_action = torch.argmax(self.policy_net(state_tensor)).item()
+
+                self.env.victim.position = self.env.victim.move_player(self.env.victim.position, victim_action)
+
+                with torch.no_grad():
+                    state_tensor = torch.tensor([state], dtype=torch.float32)
+                    hunter_action = torch.argmax(self.hunter_net.policy_net(state_tensor)).item()
+
+                next_position = self.env.chaser.move_player(self.env.chaser.position, hunter_action)
+                self.env.chaser.position = next_position
+
+                reward = Reward.reward_victim_calculation(self.env.victim.position, self.env.chaser.position)
+                total_reward += reward
+
+                done = self.env.chaser.position == self.env.victim.position or t == self.env.turns
+
+                next_state = self.get_state(self.env.chaser.position, self.env.victim.position)
+
+                with torch.no_grad():
+                    state_tensor = torch.tensor([state], dtype=torch.float32)
+                    next_state_tensor = torch.tensor([next_state], dtype=torch.float32)
+                    q_value = self.policy_net(state_tensor)[0, victim_action]
+                    max_next_q_value = torch.max(self.policy_net(next_state_tensor)).item()
+                    td_error = abs(reward + (1 - done) * self.gamma * max_next_q_value - q_value)
+
+                self.store_experience(state, victim_action, reward, next_state, done, td_error)
+
+                self.train_dqn()
+
+                state = next_state
+                t += 1
+
+            if total_reward < 0:
+                self.epsilon = min(self.epsilon * 1.05, 1.0)
+            else:
+                self.epsilon = max(self.epsilon * 0.99, self.epsilon_min)
+
+            self.soft_update()
+            rewards_per_episode.append(total_reward)
+
+        self.save_model("trained_victim.pth")
+        self.plot_rewards(rewards_per_episode)
+
     def plot_rewards(self, rewards_per_episode):
         window_size = 140
         smoothed_rewards = pd.Series(rewards_per_episode).rolling(window=window_size).mean()
@@ -152,9 +234,12 @@ class Main:
         plt.title("Learning Progress")
         plt.show()
 
-    def test(self, episodes):
-        successes = 0
-        total_reward = 0
+    def test(self, episodes, hunter_model_path, victim_model_path):
+        self.hunter_net = Main()
+        self.hunter_net.load_model(hunter_model_path)
+
+        self.policy_net = Main()
+        self.policy_net.load_model(victim_model_path)
 
         for episode in range(episodes):
             self.env.reset()
@@ -165,44 +250,34 @@ class Main:
             while not done:
                 with torch.no_grad():
                     state_tensor = torch.tensor([state], dtype=torch.float32)
-                    action = torch.argmax(self.policy_net(state_tensor)).item()
+                    hunter_action = torch.argmax(self.hunter_net.policy_net(state_tensor)).item()
 
-                #Victim moving logic
-                self.env.victim.position = self.env.victim.random_move(self.env.victim.position)
-                #Visualisation
+                next_position = self.env.chaser.move_player(self.env.chaser.position, hunter_action)
+                self.env.chaser.position = next_position
+
                 self.env.visualize(self.env.chaser.position, self.env.victim.position)
-                reward = Reward.reward_chaser_calculation(self.env.victim.position, self.env.chaser.position)
-                total_reward += reward
 
                 if self.env.chaser.position == self.env.victim.position or t == self.env.turns:
                     done = True
                     break
 
-                #Chaser moving logic
-                next_position = self.env.chaser.move_player(self.env.chaser.position, action)
-                self.env.chaser.position = next_position
-                reward = Reward.reward_chaser_calculation(self.env.victim.position, self.env.chaser.position)
-                total_reward += reward
-                state = self.get_state(self.env.chaser.position, self.env.victim.position)
-                #Visualisation2
+                with torch.no_grad():
+                    state_tensor = torch.tensor([state], dtype=torch.float32)
+                    victim_action = torch.argmax(self.policy_net.policy_net(state_tensor)).item()
+
+                self.env.victim.position = self.env.victim.move_player(self.env.victim.position, victim_action)
                 self.env.visualize(self.env.chaser.position, self.env.victim.position)
+
+                state = self.get_state(self.env.chaser.position, self.env.victim.position)
 
                 done = self.env.chaser.position == self.env.victim.position or t == self.env.turns
                 t += 1
 
-            if self.env.chaser.position == self.env.victim.position:
-                successes += 1
-
-        accuracy = successes / episodes * 100
-        avg_reward = total_reward / episodes
-
-        print(f"Test Results: {successes}/{episodes} successful episodes")
-        print(f"Accuracy: {accuracy:.2f}%")
-        print(f"Average Reward: {avg_reward:.2f}")
+            self.env.save_gif(f"simulation_episode_{episode}.gif")
 
 
 if __name__ == "__main__":
     trainer = Main()
-    #trainer.train(episodes=4000)  # Run train
-    #trainer.load_model("trained_model.pth") # Test of trained model
-    #trainer.test(episodes=100)
+    #trainer.train(2000)
+    #trainer.train_victim(episodes=4000, hunter_model_path="trained_model.pth")  # Run train
+    trainer.test(1, "trained_model.pth", "trained_victim.pth")
