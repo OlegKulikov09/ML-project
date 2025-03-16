@@ -54,7 +54,7 @@ The `Main` class enables training and testing of reinforcement learning agents f
 
 The pure development time for the current version took 14 days. Including task formulation, strategy research, refactoring, and fine-tuning, the total duration was approximately two months.
 
-An extended version with a more complex environment can be found in a colleague’s project: [Hunter-Prey-DQN](https://github.com/GrzegorzHimself/Hunter-Prey-DQN)
+An extended version with a more complex environment can be found in a colleague’s repository: [Hunter-Prey-DQN](https://github.com/GrzegorzHimself/Hunter-Prey-DQN)
 
 # TRAINING MATERIALS
 
