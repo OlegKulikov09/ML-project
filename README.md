@@ -36,7 +36,6 @@ The goal of the project is to simulate a game of tag, where one agent acts as a 
 - **Testing (`test`)**: Runs a test simulation where a trained hunter and victim agent interact.
 - **Plotting (`plot_rewards`)**: Visualizes the training progress over episodes.
 
-The `Main` class enables training and testing of reinforcement learning agents for a predator-prey scenario using DQN.
   The main script that executes training and testing procedures for the agents:
   
   - Starts the training process for the hunter agent, with the number of training episodes specified as a parameter:
